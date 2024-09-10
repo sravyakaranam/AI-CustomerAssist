@@ -1,7 +1,8 @@
+// page.js
 'use client'
 
 import { Box, Button, Stack, TextField } from '@mui/material';
-import { useState, useRef, useEffect } from 'react'; // Import useRef and useEffect from React
+import { useState, useRef, useEffect } from 'react';
 
 export default function Home() {
   const [messages, setMessages] = useState([
@@ -12,9 +13,10 @@ export default function Home() {
   ]);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef(null);
 
   const sendMessage = async () => {
-    if (!message.trim() || isLoading) return; // Don't send empty messages
+    if (!message.trim() || isLoading) return;
     setIsLoading(true);
     setMessage('');
     setMessages((messages) => [
@@ -68,8 +70,6 @@ export default function Home() {
       sendMessage();
     }
   };
-
-  const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

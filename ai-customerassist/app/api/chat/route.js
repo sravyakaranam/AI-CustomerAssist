@@ -1,44 +1,71 @@
-import { NextResponse } from 'next/server'; // Import NextResponse from Next.js for handling responses
-import OpenAI from 'openai'; // Import OpenAI library for interacting with the OpenAI API
+// Import necessary modules
+import { NextResponse } from 'next/server';
 
-// System prompt for the AI, providing guidelines on how to respond to users
-const systemPrompt = "Provide detailed and accurate responses to user queries."; // Define your system prompt
+// Set up your API endpoint and environment variables
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // Ensure your API key is securely stored in environment variables
+const YOUR_SITE_URL = process.env.YOUR_SITE_URL || 'http://localhost:3000'; // Set to your local site URL
+const YOUR_SITE_NAME = process.env.YOUR_SITE_NAME || 'Localhost Site'; // Set to your local site name
 
 // POST function to handle incoming requests
 export async function POST(req) {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY, // Ensure you have your API key set up
-  });
+  let data;
+  try {
+    // Parse the incoming request as JSON
+    data = await req.json();
+  } catch (error) {
+    console.error('Error parsing request JSON:', error);
+    return new Response('Invalid JSON input', { status: 400 });
+  }
 
-  const data = await req.json(); // Parse the JSON body of the incoming request
+  // Construct the request payload for OpenRouter API
+  const requestBody = {
+    model: 'meta-llama/llama-3.1-8b-instruct:free', // Specify the model to use
+    messages: data, // Use the incoming messages from the request body
+  };
 
-  // Create a chat completion request to the OpenAI API
-  const completion = await openai.chat.completions.create({
-    messages: [{ role: 'system', content: systemPrompt }, ...data], // Include the system prompt and user messages
-    model: 'gpt-4', // Specify the correct model name
-    stream: true, // Enable streaming responses
-  });
+  try {
+    // Send a POST request to the OpenRouter API
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENROUTER_API_KEY}`, // Include your API key
+        'HTTP-Referer': YOUR_SITE_URL, // Optional: Include your local site URL
+        'X-Title': YOUR_SITE_NAME, // Optional: Include your site name
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-  // Create a ReadableStream to handle the streaming response
-  const stream = new ReadableStream({
-    async start(controller) {
-      const encoder = new TextEncoder(); // Create a TextEncoder to convert strings to Uint8Array
-      try {
-        // Iterate over the streamed chunks of the response
-        for await (const chunk of completion) {
-          const content = chunk.choices[0]?.delta?.content; // Extract the content from the chunk
-          if (content) {
-            const text = encoder.encode(content); // Encode the content to Uint8Array
-            controller.enqueue(text); // Enqueue the encoded text to the stream
-          }
-        }
-      } catch (err) {
-        controller.error(err); // Handle any errors that occur during streaming
-      } finally {
-        controller.close(); // Close the stream when done
-      }
-    },
-  });
+    // Read the response as text
+    const textResponse = await response.text();
+    console.log('Raw response:', textResponse); // Log the response for debugging
 
-  return new Response(stream); // Use the Response object instead of NextResponse for streaming
+    // Check if the response is not OK or is in HTML format
+    if (!response.ok || response.headers.get('content-type')?.includes('text/html')) {
+      console.error('Error with API response:', textResponse);
+      return new Response(`Error with API: ${textResponse}`, { status: 500 });
+    }
+
+    // Parse the response as JSON
+    const responseData = JSON.parse(textResponse);
+
+    // Create a readable stream to handle the response (adjust based on response structure)
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder();
+        const text = encoder.encode(responseData.choices[0].message.content); // Adjust as per the actual response structure
+        controller.enqueue(text);
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      headers: { 'Content-Type': 'text/plain' },
+    });
+
+  } catch (error) {
+    console.error('Error during API request:', error);
+    return new Response('Error with API request', { status: 500 });
+  }
 }
