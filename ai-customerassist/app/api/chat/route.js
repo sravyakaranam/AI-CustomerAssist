@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 // Set up your API endpoint and environment variables
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY; // Ensure your API key is securely stored in environment variables
-const YOUR_SITE_URL = process.env.YOUR_SITE_URL || 'https://your-vercel-app.vercel.app'; // Set to your local site URL
+const YOUR_SITE_URL = process.env.YOUR_SITE_URL || 'https://ai-customer-assist-5jdd.vercel.app/'; // Set to your local site URL
 const YOUR_SITE_NAME = process.env.YOUR_SITE_NAME || 'ai-customerAssist'; // Set to your local site name
 
 // POST function to handle incoming requests
